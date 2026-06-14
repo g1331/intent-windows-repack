@@ -1,0 +1,136 @@
+# Intent for Windows — 重打包工具
+
+把官方只发布了 macOS `.dmg` 的 **Intent by Augment** 重新打包成可在 Windows 上运行的版本。
+
+> ⚠️ **本仓库不包含 Intent 的任何代码或二进制。** 出于版权考虑,这里只放“怎么转换”的脚本与文档。你需要自备官方 macOS `.dmg`,脚本负责把它转换成 Windows 版。
+
+---
+
+## 一、为什么这事能成
+
+Intent 是一个 **Electron 应用**。Electron 应用本质上分三层,只有两层是和操作系统绑定的:
+
+| 层 | 内容 | 跨平台吗? | 处理方式 |
+| --- | --- | --- | --- |
+| 应用代码 `app.asar` | 全部业务逻辑(JavaScript / 资源) | ✅ 与平台无关 | 原样复用 |
+| Electron 运行时 | `electron.exe` + 一堆 DLL | ❌ 平台专属 | 换成同版本的 Windows 版 |
+| 原生模块 `*.node` | sharp、node-pty 等 C++ 扩展 | ❌ 平台 + ABI 专属 | 替换或重新编译 |
+
+也就是说,占应用 99% 体积的业务代码本来就是跨平台的,真正要换的只是“底座”——把 macOS 的 Electron 运行时换成 Windows 的,再把几个原生模块换成 Windows 版即可。
+
+**关键数字**:Intent 当前用 Electron `41.5.2`,对应 Node **ABI = 145**。所有原生模块必须同时满足 **win32-x64** 且 **ABI 145**,否则加载即崩。脚本会自动从 dmg 里探测这两个值,不写死。
+
+---
+
+## 二、四个原生模块各自怎么换
+
+不同模块发布预编译包的方式不一样,所以策略也不同:
+
+| 模块 | 策略 | 来源 |
+| --- | --- | --- |
+| `sharp` | 平台分包替换 | npm 包 `@img/sharp-win32-x64` |
+| `@parcel/watcher` | 平台分包替换 | npm 包 `@parcel/watcher-win32-x64` |
+| `better-sqlite3` | 预编译二进制替换 | GitHub Release 的 `electron-v145-win32-x64` prebuild |
+| `node-pty` | **本机 / CI 现场编译** | node-gyp(关闭 Spectre + 三处源码补丁,见下) |
+
+前三个有现成的 Windows 预编译包可下;只有 `node-pty` 没有匹配 Electron ABI 的预编译,必须用 C++ 工具链现场编译。
+
+---
+
+## 三、怎么用
+
+### 方式 A:GitHub Actions(推荐,零本地依赖)
+
+`windows-latest` runner 自带 VS 2022 C++ 工具链 / Node / Python / 7-Zip,正好满足全部编译需求。
+
+1. 进入仓库 **Actions** 页 → 选 **Build Intent for Windows** → **Run workflow**
+2. 填参数:
+   - `dmg_url`:Intent 的 macOS `.dmg` 直链(必填)
+   - `release_tag`:可选。填了就把成品自动发布到对应 tag 的 Release;留空则只产出 build artifact
+3. 跑完后到 **Artifacts** 下载,或(填了 tag 时)到 **Releases** 取成品 zip
+
+### 方式 B:本地运行
+
+需要本机具备:
+- **VS Build Tools**(含 C++ 工具链)—— 编译 node-pty 用
+- **Node.js + Python** —— node-gyp 依赖
+- 完整版 **7-Zip**(精简版不支持 APFS 格式的 dmg)—— 脚本会自动定位
+
+```powershell
+# dmg 在本地
+pwsh scripts/repack.ps1 -DmgPath "D:\下载\Intent-latest-arm64.dmg"
+
+# 或给一个下载直链
+pwsh scripts/repack.ps1 -DmgUrl "https://.../Intent-latest-arm64.dmg"
+```
+
+成品输出到 `dist\Intent-win-*.zip`,解压即用(运行里面的 `Intent.exe`)。
+
+| 参数 | 说明 | 默认值 |
+| --- | --- | --- |
+| `-DmgPath` | 本地 dmg 路径(与 `-DmgUrl` 二选一) | — |
+| `-DmgUrl` | dmg 下载直链(与 `-DmgPath` 二选一) | — |
+| `-OutDir` | 成品输出目录 | `<repo>\dist` |
+| `-WorkDir` | 临时工作目录(已被 `.gitignore` 排除) | `<repo>\.work` |
+| `-ElectronMirror` | Electron 运行时下载镜像 | npmmirror 镜像 |
+
+---
+
+## 四、脚本做了哪 6 步
+
+`scripts/repack.ps1` 全程从 dmg 动态探测版本,不写死任何版本号:
+
+1. 解开 dmg,提取 `app.asar` / `app.asar.unpacked`,读出 Electron 版本与原生模块 ABI
+2. 下载对应版本的 Windows 版 Electron 运行时
+3. 把 `app.asar` **解成 `app` 目录**(绕开 asar 索引限制),并合并 `unpacked`
+4. 用 Windows 预编译替换 `sharp` / `@parcel/watcher` / `better-sqlite3`
+5. 现场编译 `node-pty`(关闭 Spectre 缓解 + 打补丁),装入
+6. 组装成 `Intent-win` 并打包为 zip
+
+> **为什么第 3 步要把 asar 解成目录?**
+> `app.asar` 是带索引的归档文件。往 `app.asar.unpacked` 里新增文件(比如 Windows 版原生模块)是无效的——因为 asar 的索引里没有这个新条目,`require` 解析时根本找不到它。最干净的解法是把整个 `app.asar` 解成普通的 `app` 目录、删掉原 asar,这样 Electron 直接按目录加载,新增/替换文件就都能被认到。
+
+---
+
+## 五、node-pty 的三处源码补丁(已知问题修复)
+
+`node-pty` 编译前,脚本会自动给它的 Windows 源码打三处补丁(若上游某天改了这些代码,脚本会打印 `patch 未命中` 警告,而不是静默漏修):
+
+| # | 文件 | 问题 | 修复 |
+| --- | --- | --- | --- |
+| 1 | `conpty.cc` | **退出竞态**:关闭应用时主线程的 napi 环境正在拆除,ConPTY 后台线程的 `BlockingCall` 返回 `napi_closing`(非 `napi_ok`),旧代码 `assert(status == napi_ok)` 触发一个 C++ 运行时断言弹框 | 改为 `if (status != napi_ok) { delete exit_event; }`——容忍关闭阶段的正常失败,并手动清理(因为回调没执行,负责 delete 的代码不会跑) |
+| 2 | `conpty.cc` | `assert(remove_pty_baton(id))` 把**有副作用的调用**放进了断言里 | 把调用拎出来:`remove_pty_baton(id);` |
+| 3 | `winpty.cc` | 同上:`assert(remove_pipe_handle(pid))` | `remove_pipe_handle(pid);` |
+
+**第 2、3 处为什么是隐患**:C/C++ 里一旦定义了 `NDEBUG`(Release 构建的惯例),`assert(...)` 会被预处理器**整体删除**,连里面的函数调用一起没了。把清理资源的 `remove_*` 调用写在 assert 里,等于在 Release 下静默泄漏。这是公认的反模式,顺手一并修掉。
+
+---
+
+## 六、诊断脚本
+
+`scripts/probe.js` 用来验证“某个 `app` 目录里的原生模块,能不能在目标 Electron ABI 下被加载”。
+
+原理:设置 `ELECTRON_RUN_AS_NODE=1` 让 `electron.exe` 退化成一个**带 Electron ABI 的 Node 解释器**,然后逐个 `process.dlopen` 各模块——能 `OK` 就说明这个 `.node` 与当前 ABI 匹配。
+
+```powershell
+$env:ELECTRON_RUN_AS_NODE = 1
+& "<解压目录>\Intent.exe" scripts\probe.js "<解压目录>\resources\app\node_modules" out.txt
+type out.txt
+```
+
+输出形如:
+
+```
+runtime: electron=41.5.2 node=... modules(ABI)=145 platform=win32 arch=x64
+---
+OK    better-sqlite3 (replaced->win)
+OK    sharp           (added->win)
+OK    parcel-watcher  (added->win)
+OK    node-pty        (...)
+```
+
+---
+
+## 七、法律说明
+
+本仓库仅包含重打包**脚本与文档**,不分发 Intent 的任何代码或资源。Intent 版权归 Augment 所有。请在已合法获取 Intent 的前提下,将重打包产物用于个人在 Windows 上的自用目的。

@@ -1,0 +1,52 @@
+name: Build Intent for Windows
+
+# 手动触发:填入 Intent 的 macOS dmg 直链,在 windows runner 上自动重打包。
+# windows-latest 自带 VS 2022 C++ 工具链 / Node / Python,正好满足 node-pty 编译。
+on:
+  workflow_dispatch:
+    inputs:
+      dmg_url:
+        description: "Intent macOS .dmg 下载直链"
+        required: true
+        type: string
+      release_tag:
+        description: "可选: 发布到 Release 的 tag(留空则只产出 build artifact)"
+        required: false
+        type: string
+
+permissions:
+  contents: write   # 发布 Release 需要写权限
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # GitHub runner 自带的 7-Zip 版本可能较旧、不支持 APFS 格式的 dmg;
+      # 装最新版以确保能解开 dmg。
+      - name: Ensure latest 7-Zip (APFS dmg support)
+        run: choco install 7zip -y --no-progress
+
+      - name: Repack
+        shell: pwsh
+        run: ./scripts/repack.ps1 -DmgUrl "${{ inputs.dmg_url }}"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: intent-win32-x64
+          path: dist/*.zip
+          if-no-files-found: error
+
+      - name: Publish to Release
+        if: ${{ inputs.release_tag != '' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.release_tag }}
+          files: dist/*.zip
+          generate_release_notes: true

@@ -1,0 +1,13 @@
+# 临时工作目录与成品(不进版本库)
+.work/
+dist/
+node_modules/
+
+# 版权二进制不入库:dmg 原包、打包产物
+*.dmg
+*.zip
+
+# 杂项
+*.log
+.DS_Store
+Thumbs.db
