@@ -279,7 +279,10 @@ if ($nptyVer) {
 # ---------------------------------------------------------------------------
 foreach ($p in @("app.asar","app.asar.unpacked")) {
   $t = Join-Path $dest "resources\$p"
-  if (Test-Path $t) { [System.IO.Directory]::Exists($t) ? [System.IO.Directory]::Delete($t,$true) : [System.IO.File]::Delete($t) | Out-Null }
+  if (Test-Path $t) {
+    if ([System.IO.Directory]::Exists($t)) { [System.IO.Directory]::Delete($t, $true) }
+    else { [System.IO.File]::Delete($t) }
+  }
 }
 
 # 把 electron.exe 改名为应用名,更像原生应用(可选)
