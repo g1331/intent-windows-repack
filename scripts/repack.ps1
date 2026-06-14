@@ -15,23 +15,40 @@
   (runner 自带 7-Zip / Node / Python / VS C++ 工具链)。
 
 .PARAMETER DmgPath
-  Intent 的 .dmg 文件路径。与 -DmgUrl 二选一。
+  Intent 的 .dmg 文件路径。
 
 .PARAMETER DmgUrl
-  Intent 的 .dmg 下载地址(CI 场景)。与 -DmgPath 二选一。
+  Intent 的 .dmg 下载地址。
+
+.PARAMETER Channel
+  自动获取时的更新频道(stable / beta),默认 stable。仅在既未给 -DmgPath
+  也未给 -DmgUrl 时生效。
+
+.PARAMETER UpdateBaseUrl
+  自动获取的更新源基址(不含频道段),默认取环境变量 INTENT_UPDATE_BASE_URL。
+  dmg 来源优先级:-DmgPath > -DmgUrl > 自动从 <UpdateBaseUrl>/<Channel>/latest-mac.yml
+  解析出最新版 dmg 并下载。地址不写死在脚本里,由参数或环境变量提供。
 
 .PARAMETER OutDir
   成品输出目录,默认 <repo>/dist。
 
 .EXAMPLE
-  pwsh scripts/repack.ps1 -DmgPath "D:\Downloads\Intent-latest-arm64.dmg"
+  # 指定本地 dmg
+  pwsh scripts/repack.ps1 -DmgPath "D:\Downloads\Intent.dmg"
+
+.EXAMPLE
+  # 自动获取最新稳定版(先设更新源基址)
+  $env:INTENT_UPDATE_BASE_URL = "<Intent 更新源基址>"
+  pwsh scripts/repack.ps1
 #>
 [CmdletBinding()]
 param(
   [string]$DmgPath,
   [string]$DmgUrl,
-  [string]$OutDir   = (Join-Path $PSScriptRoot "..\dist"),
-  [string]$WorkDir  = (Join-Path $PSScriptRoot "..\.work"),
+  [string]$Channel        = "stable",
+  [string]$UpdateBaseUrl  = $env:INTENT_UPDATE_BASE_URL,
+  [string]$OutDir         = (Join-Path $PSScriptRoot "..\dist"),
+  [string]$WorkDir        = (Join-Path $PSScriptRoot "..\.work"),
   [string]$ElectronMirror = "https://npmmirror.com/mirrors/electron/"
 )
 
@@ -83,8 +100,26 @@ function Get-JsonValue($file, $prop) {
 }
 
 # ---------------------------------------------------------------------------
-# 0. 准备 dmg
+# 0. 准备 dmg:优先级 DmgPath > DmgUrl > 自动从更新源获取最新版
 # ---------------------------------------------------------------------------
+if (-not $DmgPath -and -not $DmgUrl) {
+  if (-not $UpdateBaseUrl) {
+    Die "未提供 dmg。请用 -DmgPath / -DmgUrl,或设置 -UpdateBaseUrl(或环境变量 INTENT_UPDATE_BASE_URL)以自动获取最新版。"
+  }
+  $feed = "$($UpdateBaseUrl.TrimEnd('/'))/$Channel/latest-mac.yml"
+  Log "未指定 dmg,从更新源自动获取最新 $Channel 版: $feed"
+  $ymlText = [System.Text.Encoding]::UTF8.GetString((Invoke-WebRequest $feed -UseBasicParsing).Content)
+  # 从清单的 files 列表里取 .dmg 条目的文件名(electron-updater generic 约定)
+  $dmgName = $null
+  foreach ($line in ($ymlText -split "`n")) {
+    if ($line -match 'url:\s*(.+\.dmg)\s*$') { $dmgName = $matches[1].Trim(); break }
+  }
+  if (-not $dmgName) { Die "更新清单未找到 .dmg 条目: $feed" }
+  $ver = if ($ymlText -match '(?m)^version:\s*(.+?)\s*$') { $matches[1] } else { "?" }
+  # 文件名可能含空格等字符,做 URL 编码
+  $DmgUrl = "$($UpdateBaseUrl.TrimEnd('/'))/$Channel/$([Uri]::EscapeDataString($dmgName))"
+  Log "最新 $Channel 版本: $ver  dmg: $dmgName"
+}
 if ($DmgUrl) {
   $DmgPath = Join-Path $WorkDir "Intent.dmg"
   Log "下载 dmg: $DmgUrl"

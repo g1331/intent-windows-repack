@@ -1,18 +1,26 @@
 name: Build Intent for Windows
 
-# 手动触发:填入 Intent 的 macOS dmg 直链,在 windows runner 上自动重打包。
-# windows-latest 自带 VS 2022 C++ 工具链 / Node / Python,正好满足 node-pty 编译。
+# 触发方式:
+#   1) schedule  — 每天检查更新源,发现未发布过的新版本就自动重打包并发布 Release。
+#   2) workflow_dispatch — 手动:可填 dmg_url 直接指定;留空则自动获取最新稳定版。
+#
+# 自动获取需要仓库 Secret `INTENT_UPDATE_BASE_URL`(Intent 更新源基址)。
+# 地址不写死在仓库里,避免公开第三方未文档化的下载端点。
+# windows-latest 自带 VS 2022 C++ 工具链 / Node / Python,满足 node-pty 编译。
 on:
+  schedule:
+    - cron: "0 8 * * *"   # 每天 UTC 08:00
   workflow_dispatch:
     inputs:
       dmg_url:
-        description: "Intent macOS .dmg 下载直链"
-        required: true
-        type: string
-      release_tag:
-        description: "可选: 发布到 Release 的 tag(留空则只产出 build artifact)"
+        description: "可选: Intent macOS .dmg 直链;留空则自动获取最新稳定版"
         required: false
         type: string
+      force:
+        description: "强制重打包(即使该版本已发布过 Release)"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write   # 发布 Release 需要写权限
@@ -20,33 +28,84 @@ permissions:
 jobs:
   build:
     runs-on: windows-latest
+    env:
+      INTENT_UPDATE_BASE_URL: ${{ secrets.INTENT_UPDATE_BASE_URL }}
     steps:
       - uses: actions/checkout@v4
 
+      # 解析更新源最新版本号,并判断是否已发布过(定时场景用于去重,避免重复打包)
+      - name: Resolve latest version
+        id: ver
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $dmgUrl = "${{ inputs.dmg_url }}"
+          if ($dmgUrl) {
+            # 手动指定 dmg:不解析版本,只产 artifact,不自动发 Release
+            "version=manual" >> $env:GITHUB_OUTPUT
+            "skip=false"     >> $env:GITHUB_OUTPUT
+            Write-Host "手动指定 dmg_url,跳过版本解析"
+            exit 0
+          }
+          if (-not $env:INTENT_UPDATE_BASE_URL) {
+            Write-Error "未配置 Secret INTENT_UPDATE_BASE_URL,无法自动获取。请在仓库 Settings → Secrets and variables → Actions 添加。"
+            exit 1
+          }
+          $feed = "$($env:INTENT_UPDATE_BASE_URL.TrimEnd('/'))/stable/latest-mac.yml"
+          $yml  = [System.Text.Encoding]::UTF8.GetString((Invoke-WebRequest $feed -UseBasicParsing).Content)
+          if ($yml -notmatch '(?m)^version:\s*(.+?)\s*$') { Write-Error "无法从清单解析版本号"; exit 1 }
+          $v = $matches[1]
+          Write-Host "更新源最新稳定版: $v"
+          "version=$v" >> $env:GITHUB_OUTPUT
+
+          # 该版本是否已发布过 Release?(已发布且非强制 → 跳过)
+          $force  = "${{ inputs.force }}" -eq "true"
+          $exists = $false
+          gh release view "v$v" 2>$null 1>$null
+          if ($LASTEXITCODE -eq 0) { $exists = $true }
+          if ($exists -and -not $force) {
+            Write-Host "v$v 已发布,跳过本次打包"
+            "skip=true" >> $env:GITHUB_OUTPUT
+          } else {
+            "skip=false" >> $env:GITHUB_OUTPUT
+          }
+
       - uses: actions/setup-node@v4
+        if: steps.ver.outputs.skip != 'true'
         with:
           node-version: "20"
 
-      # GitHub runner 自带的 7-Zip 版本可能较旧、不支持 APFS 格式的 dmg;
-      # 装最新版以确保能解开 dmg。
+      # GitHub runner 自带的 7-Zip 可能较旧、不支持 APFS 格式 dmg;装最新版。
       - name: Ensure latest 7-Zip (APFS dmg support)
+        if: steps.ver.outputs.skip != 'true'
         run: choco install 7zip -y --no-progress
 
       - name: Repack
+        if: steps.ver.outputs.skip != 'true'
         shell: pwsh
-        run: ./scripts/repack.ps1 -DmgUrl "${{ inputs.dmg_url }}"
+        run: |
+          $dmgUrl = "${{ inputs.dmg_url }}"
+          if ($dmgUrl) {
+            ./scripts/repack.ps1 -DmgUrl "$dmgUrl"
+          } else {
+            # 自动获取:repack.ps1 读取 env INTENT_UPDATE_BASE_URL 拉最新 stable dmg
+            ./scripts/repack.ps1
+          }
 
       - name: Upload build artifact
+        if: steps.ver.outputs.skip != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: intent-win32-x64
           path: dist/*.zip
           if-no-files-found: error
 
+      # 仅自动获取(已知版本号)时发布 Release;手动填 dmg_url 的场景只产 artifact。
       - name: Publish to Release
-        if: ${{ inputs.release_tag != '' }}
+        if: ${{ steps.ver.outputs.skip != 'true' && steps.ver.outputs.version != 'manual' }}
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ inputs.release_tag }}
+          tag_name: v${{ steps.ver.outputs.version }}
           files: dist/*.zip
           generate_release_notes: true
