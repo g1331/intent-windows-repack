@@ -61,15 +61,16 @@ jobs:
 
           # 该版本是否已发布过 Release?(已发布且非强制 → 跳过)
           $force  = "${{ inputs.force }}" -eq "true"
-          $exists = $false
           gh release view "v$v" 2>$null 1>$null
-          if ($LASTEXITCODE -eq 0) { $exists = $true }
+          $exists = ($LASTEXITCODE -eq 0)   # release 不存在时 gh 返回非0,属预期
           if ($exists -and -not $force) {
             Write-Host "v$v 已发布,跳过本次打包"
             "skip=true" >> $env:GITHUB_OUTPUT
           } else {
             "skip=false" >> $env:GITHUB_OUTPUT
           }
+          # gh release view 的非0退出码会被 Actions 当成 step 失败,显式归零
+          exit 0
 
       - uses: actions/setup-node@v4
         if: steps.ver.outputs.skip != 'true'
