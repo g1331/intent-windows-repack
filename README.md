@@ -76,7 +76,7 @@ pwsh scripts/repack.ps1 -DmgUrl "https://.../Intent-latest-arm64.dmg"
 
 ---
 
-## 四、脚本做了哪 6 步
+## 四、脚本做了哪几步
 
 `scripts/repack.ps1` 全程从 dmg 动态探测版本,不写死任何版本号:
 
@@ -85,10 +85,14 @@ pwsh scripts/repack.ps1 -DmgUrl "https://.../Intent-latest-arm64.dmg"
 3. 把 `app.asar` **解成 `app` 目录**(绕开 asar 索引限制),并合并 `unpacked`
 4. 用 Windows 预编译替换 `sharp` / `@parcel/watcher` / `better-sqlite3`
 5. 现场编译 `node-pty`(关闭 Spectre 缓解 + 打补丁),装入
-6. 组装成 `Intent-win` 并打包为 zip
+6. 从 dmg 的 `icon.icns` 提取应用图标,转成 `.ico` 后用 `rcedit` 写入 exe
+7. 组装成 `Intent-win` 并打包为 zip
 
 > **为什么第 3 步要把 asar 解成目录?**
 > `app.asar` 是带索引的归档文件。往 `app.asar.unpacked` 里新增文件(比如 Windows 版原生模块)是无效的——因为 asar 的索引里没有这个新条目,`require` 解析时根本找不到它。最干净的解法是把整个 `app.asar` 解成普通的 `app` 目录、删掉原 asar,这样 Electron 直接按目录加载,新增/替换文件就都能被认到。
+
+> **第 6 步的图标怎么来的?**
+> dmg 里的 `Contents/Resources/icon.icns` 是 macOS 图标格式,Windows 不认。`scripts/icns2ico.js` 直接在 `.icns` 字节流里扫描内嵌的 PNG(现代 icns 内部就是多张不同分辨率的 PNG),取最大的一张,用 `png2icons` 生成多尺寸 `.ico`,再用 `rcedit` 写进 exe 的资源段。注意顺序:先给 `electron.exe` 写图标,再复制成应用名 exe,让副本天然继承图标。这两个依赖(`png2icons` / `rcedit`)脚本会自动 `npm install` / 下载,CI 的 windows runner 上同样适用。
 
 ---
 

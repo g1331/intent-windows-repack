@@ -285,7 +285,24 @@ foreach ($p in @("app.asar","app.asar.unpacked")) {
   }
 }
 
-# 把 electron.exe 改名为应用名,更像原生应用(可选)
+# 设置 exe 图标(从 dmg 的 icon.icns 转 .ico 写入 electron.exe)。
+# 顺序关键:先给 electron.exe 写图标,再复制成应用名 exe,让副本天然继承图标。
+$icns = Join-Path $WorkDir "icon.icns"
+& $7z e $DmgPath "-o$WorkDir" "$appName\Contents\Resources\icon.icns" -y | Out-Null
+if (Test-Path $icns) {
+  npm install --prefix $WorkDir png2icons 2>&1 | Out-Null
+  $env:NODE_PATH = Join-Path $WorkDir "node_modules"
+  $ico = Join-Path $WorkDir "icon.ico"
+  node (Join-Path $PSScriptRoot "icns2ico.js") $icns $ico
+  $rcedit = Join-Path $WorkDir "rcedit-x64.exe"
+  if (-not (Test-Path $rcedit)) {
+    Invoke-WebRequest "https://github.com/electron/rcedit/releases/latest/download/rcedit-x64.exe" -OutFile $rcedit -UseBasicParsing
+  }
+  & $rcedit (Join-Path $dest "electron.exe") --set-icon $ico
+  if ($LASTEXITCODE -eq 0) { Log "已写入 exe 图标" } else { Warn "rcedit 写图标失败(exit=$LASTEXITCODE)" }
+} else { Warn "dmg 中未找到 icon.icns,跳过图标设置" }
+
+# 把(已带图标的) electron.exe 复制为应用名 exe,更像原生应用
 $exeName = ($appName -replace "\.app$","") -replace " ",""
 Copy-Item (Join-Path $dest "electron.exe") (Join-Path $dest "$exeName.exe") -Force
 
