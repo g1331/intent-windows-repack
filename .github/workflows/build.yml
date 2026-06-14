@@ -6,7 +6,8 @@ name: Build Intent for Windows
 #
 # 自动获取需要仓库 Secret `INTENT_UPDATE_BASE_URL`(Intent 更新源基址)。
 # 地址不写死在仓库里,避免公开第三方未文档化的下载端点。
-# windows-latest 自带 VS 2022 C++ 工具链 / Node / Python,满足 node-pty 编译。
+# 固定用 windows-2022(自带 VS 2022 C++ 工具链);windows-latest 已切到 VS 2026,
+# 其旧版 node-gyp 不认 VS18 会导致 node-pty 编译失败,故 pin 版本。
 on:
   schedule:
     - cron: "0 8 * * *"   # 每天 UTC 08:00
@@ -27,7 +28,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: windows-2022
     env:
       INTENT_UPDATE_BASE_URL: ${{ secrets.INTENT_UPDATE_BASE_URL }}
     steps:
