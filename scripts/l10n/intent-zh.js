@@ -1092,6 +1092,119 @@
       "创建一个会话，获取工作区、设置、专职智能体和导航方面的帮助。",
     "Onboarding steps": "新手引导步骤",
     "Go back to previous step": "返回上一步",
+
+    // —— CDP 实机扫描补充(工作区视图/终端面板/消息操作实测漏网) ——
+    "Clear terminal": "清空终端",
+    "Expand terminal": "展开终端",
+    "Detect Scripts": "检测脚本",
+    "📦 Built-in specialist": "📦 内置专家",
+    "Built-in specialist": "内置专家",
+    "The workspace contains a copy of your repo that lives in": "工作区包含你仓库的一份副本,原仓库位于",
+    "Terminal input": "终端输入",
+    "Copy message (Shift+click to copy session ID)": "复制消息(Shift+点击复制会话 ID)",
+    "Fork conversation from this message": "从此消息分叉对话",
+    "Regenerate response": "重新生成回复",
+    "Create new item": "新建条目",
+    "Save scripts to repo": "把脚本保存到仓库",
+    "Split panel down": "向下拆分面板",
+    "Split panel right": "向右拆分面板",
+    "Auto-scroll locked (click to unlock)": "自动滚动已锁定(点击解锁)",
+    "Click to rename": "点击重命名",
+    "Idle": "空闲",
+    "Open in VS Code": "在 VS Code 中打开",
+    "Start a new agent to change provider or model.": "更换提供方或模型请启动新智能体。",
+    "Set workspace title and agent name": "设置工作区标题与智能体名称",
+    "List recent workspaces for example": "例如:列出最近的工作区",
+    "Workspace ready to go!": "工作区就绪!",
+    "Your agent is ready — say something to get started.": "智能体已就绪——说点什么开始吧。",
+    "Scripts": "脚本",
+    "Terminals": "终端",
+    // 安装脚本提示条由多个行内片段拼成,逐段翻译(in/at 等孤立介词太危险,保留)
+    "We ran the": "我们运行了",
+    "setup script": "安装脚本",
+    "a terminal tab": "终端标签页",
+    "Working directly on": "直接工作于",
+    "— save your setup commands as a reusable script": "——把配置命令保存为可复用的安装脚本",
+    // —— CDP 实机扫描补充(2026-07-12:设置页/分支弹窗/主页实测漏网) ——
+    "Getting ready to build": "准备构建中",
+    "Home": "主页",
+    "Accounts": "账户",
+    "Workspace Setup": "工作区设置",
+    "Fonts & Colors": "字体与颜色",
+    "Set as default": "设为默认",
+    "Disconnect": "断开连接",
+    "Not grouped": "未分组",
+    "All workspaces": "全部工作区",
+    "Active workspaces": "活跃的工作区",
+    "Recent": "最近",
+    "Add New": "新增",
+    "Add Context": "添加上下文",
+    "Add files": "添加文件",
+    "Attach files": "附加文件",
+    "Enhance prompt": "增强提示词",
+    "Send message": "发送消息",
+    "On": "开",
+    "Off": "关",
+    "branch": "分支",
+    "current": "当前",
+    "default": "默认",
+    "Application shell": "应用外壳",
+    "Chat input with file drop support": "支持拖入文件的聊天输入框",
+    "Notifications alt+T": "通知 alt+T",
+    "Pin to Active list": "固定到活跃列表",
+    "Search spaces": "搜索空间",
+    "New chat with Intent": "与 Intent 新对话",
+    "Quick tasks": "快捷任务",
+    "Check again": "再次检查",
+    "Import…": "导入…",
+    "Learn more ↗": "了解更多 ↗",
+    "or visit": "或访问",
+    "rtk is not installed": "未安装 rtk",
+    "Reset to Defaults": "恢复默认",
+    "Commit message": "提交信息",
+    "PR description": "PR 描述",
+    "Use default quick action model": "使用默认快捷操作模型",
+    "Couldn't load MCP servers": "无法加载 MCP 服务器",
+    "Default (Claude Code)": "默认（Claude Code）",
+    "Search or enter branch name...": "搜索或输入分支名…",
+    "Choose a branch for the Space to start from. We'll treat this branch as the \"trunk\" to merge back to.":
+      "选择空间的起始分支。该分支将被视为合并回去的“主干”。",
+    "Stay in your working directory (no git worktree). Make sure to stay on one branch while agents are running.":
+      "留在你的工作目录中（不使用 git worktree）。智能体运行期间请保持在同一分支上。",
+    "Ask for help with workspaces, settings, specialists, and app navigation.":
+      "获取工作区、设置、专职智能体与应用导航方面的帮助。",
+    "Ask Intent to help you use the app: manage workspaces, tune settings, coordinate specialists, and find your next best action.":
+      "让 Intent 帮你使用这个应用：管理工作区、调整设置、协调专职智能体、找到下一步最佳操作。",
+    "Analyze my workspaces to improve agent performance.": "分析我的工作区以提升智能体性能。",
+    "Make workspaces for the latest PRs assigned to me.": "为最近分配给我的 PR 创建工作区。",
+    "Delete stale workspaces.": "删除过时的工作区。",
+    "Prepare my daily brief for today.": "准备我今天的每日简报。",
+    "Switch me to a random theme.": "随机换个主题。",
+    "Generates git commit messages from staged changes": "根据已暂存变更生成 git 提交信息",
+    "Generates pull request titles and descriptions": "生成 Pull Request 标题和描述",
+    "Prompt enhancement, layout suggestions, and setup scripts": "提示词增强、布局建议与安装脚本",
+    "When enabled, external tools can connect to Intent via WebSocket to interact with workspaces and agents programmatically.":
+      "启用后，外部工具可通过 WebSocket 连接 Intent，以编程方式操作工作区和智能体。",
+    "The typeface used for your notes, specs, and documents. Monospace can feel more focused for technical writing.":
+      "用于笔记、规格和文档的字体。等宽字体在技术写作时可能更聚焦。",
+    "Mono": "等宽",
+    "Sans-serif": "无衬线",
+    "Sequential Thinking": "顺序思考",
+    "Think through complex problems step-by-step.": "一步步思考复杂问题。",
+    "Browser automation and testing.": "浏览器自动化与测试。",
+    "Package documentation lookup.": "查询包文档。",
+    "Read from and post to Slack channels.": "读取并发布 Slack 频道消息。",
+    "Interact with Figma design files and metadata.": "与 Figma 设计文件及元数据交互。",
+    "Manage deployments, projects, and search docs.": "管理部署、项目并搜索文档。",
+    "Optimize database queries and performance.": "优化数据库查询与性能。",
+    "Debug builds and improve CI/CD pipelines.": "调试构建并改进 CI/CD 流水线。",
+    "Simplifies infrastructure from servers to observability.": "从服务器到可观测性，简化基础设施。",
+    "The backend platform that keeps your app in sync.": "让你的应用保持同步的后端平台。",
+    "Real-time data platform for building fast apps": "构建高速应用的实时数据平台",
+    "Cortex AI, object management, SQL orchestration.": "Cortex AI、对象管理、SQL 编排。",
+    "feature/ or user/name/": "feature/ 或 user/name/",
+    "Add custom instructions for your agents... Example: # Development Guidelines - Always write tests for new features - Use TypeScript for type safety - Follow the existing code style # Agent Behavior - Be thorough in code reviews - Suggest improvements when appropriate - Explain complex changes clearly":
+      "为你的智能体添加自定义指令… 示例： # 开发规范 - 新功能必须写测试 - 使用 TypeScript 保证类型安全 - 遵循现有代码风格 # 智能体行为 - 代码评审要彻底 - 适时提出改进建议 - 清楚解释复杂改动",
   };
 
   // 含变量的文案:[匹配正则, 替换函数]
@@ -1106,10 +1219,19 @@
     [/^(\d+) days? ago$/, (m) => `${m[1]} 天前`],
     [/^(\d+) weeks? ago$/, (m) => `${m[1]} 周前`],
     [/^(\d+) months? ago$/, (m) => `${m[1]} 个月前`],
+    [/^(\d+) servers? configured$/, (m) => `已配置 ${m[1]} 个服务器`],
+    [/^Show (.+) in Open In$/, (m) => `在“打开方式”中显示 ${m[1]}`],
+    [/^Configure (.+) path$/, (m) => `配置 ${m[1]} 路径`],
+    [/^Add Auggie Context Engine MCP to (.+)$/, (m) => `为 ${m[1]} 添加 Auggie 上下文引擎 MCP`],
+    [/^Panel layout with (\d+) panels?$/, (m) => `面板布局(共 ${m[1]} 个面板)`],
+    [/^(\d+) panels? - Click for default layout$/, (m) => `${m[1]} 个面板 - 点击恢复默认布局`],
   ];
 
   // 用户输入/代码区域不碰
   const SKIP_TAGS = new Set(["SCRIPT", "STYLE", "CODE", "PRE", "TEXTAREA", "INPUT"]);
+  // 直接改写的属性只有这四个。data-placeholder 是富文本编辑器自己管理的属性,
+  // 改写它会和编辑器的 MutationObserver 互相覆盖形成微任务死循环(实测卡死渲染),
+  // 因此走 CSS 覆盖(见 translateDataPlaceholder),不写回 DOM。
   const ATTRS = ["placeholder", "title", "aria-label", "alt"];
 
   function translate(text) {
@@ -1143,6 +1265,27 @@
         if (t !== null && t !== v) el.setAttribute(a, t);
       }
     }
+    translateDataPlaceholder(el);
+  }
+
+  // data-placeholder 的占位提示由编辑器的 ::before/::after 用 attr() 渲染。
+  // 按出现过的英文值动态追加一条 content 覆盖规则,纯 CSS,不触碰属性本身。
+  const phStyle = document.createElement("style");
+  const phDone = new Set();
+  function translateDataPlaceholder(el) {
+    const v = el.getAttribute && el.getAttribute("data-placeholder");
+    if (!v || phDone.has(v)) return;
+    const t = translate(v);
+    if (t === null || t === v) return;
+    for (const pseudo of ["::before", "::after"]) {
+      if (getComputedStyle(el, pseudo).content.includes(v)) {
+        phDone.add(v);
+        phStyle.textContent +=
+          "[data-placeholder=" + JSON.stringify(v) + "]" + pseudo +
+          "{content:" + JSON.stringify(t) + " !important;}";
+        return;
+      }
+    }
   }
 
   function walk(root) {
@@ -1157,7 +1300,7 @@
     if (root.nodeType !== Node.ELEMENT_NODE) return;
     translateAttrs(root);
     if (root.querySelectorAll) {
-      for (const el of root.querySelectorAll("[placeholder],[title],[aria-label],[alt]")) translateAttrs(el);
+      for (const el of root.querySelectorAll("[placeholder],[title],[aria-label],[alt],[data-placeholder]")) translateAttrs(el);
     }
     if (shouldSkip(root)) return;
     const iter = document.createNodeIterator(root, NodeFilter.SHOW_TEXT);
@@ -1178,12 +1321,18 @@
     const style = document.createElement("style");
     style.textContent =
       ".panel-layout-container .mr-1\\.5.mb-1\\.5.rounded-xl.bg-sidebar{" +
-      "margin-right:0!important;margin-bottom:0!important;border-radius:0!important;}";
+      "margin-right:0!important;margin-bottom:0!important;border-radius:0!important;}" +
+      // 残余黑边:窗口底色(近纯黑)从顶栏与左侧图标栏透出,统一改为侧栏色;
+      // text-app-background 徽章文字随之从纯黑变深灰,肉眼无差
+      ":root{--color-app-background:var(--color-sidebar)!important;}" +
+      // 顶栏自带 rgba(0,0,0,.8) 遮罩,置透明露出统一后的底色
+      ".window-title-bar{background:transparent!important;}";
     document.head.appendChild(style);
   }
 
   function start() {
     fixWindowChrome();
+    document.head.appendChild(phStyle);
     walk(document.body);
     new MutationObserver((muts) => {
       for (const m of muts) {
@@ -1196,7 +1345,8 @@
       childList: true,
       characterData: true,
       attributes: true,
-      attributeFilter: ATTRS,
+      // data-placeholder 只观察不改写:变化时为新值补一条 CSS 覆盖规则
+      attributeFilter: ATTRS.concat("data-placeholder"),
     });
   }
 

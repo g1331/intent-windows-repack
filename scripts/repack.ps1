@@ -319,12 +319,30 @@ if ((Test-Path $l10nSrc) -and (Test-Path $indexHtml)) {
   Copy-Item $l10nSrc (Join-Path $renderer "intent-zh.js") -Force
   $html = Get-Content $indexHtml -Raw
   if ($html -notmatch "intent-zh\.js") {
-    $html = $html -replace "</head>", "<script defer src=`"./intent-zh.js`"></script></head>"
+    # 必须用绝对路径:应用可能直接恢复到 app://workspaces/workspace/xxx 深层路由,
+    # 相对路径会解析到 /workspace/intent-zh.js 而 404,整个汉化静默失效
+    $html = $html -replace "</head>", "<script defer src=`"/intent-zh.js`"></script></head>"
     Set-Content $indexHtml $html -Encoding UTF8 -NoNewline
   }
   Log "已注入汉化脚本 intent-zh.js"
 } else {
   Warn "汉化脚本或 renderer/index.html 缺失,跳过汉化注入"
+}
+
+# ---------------------------------------------------------------------------
+# 5.6 隐藏 Windows 原生菜单栏(File/Edit/View...),按 Alt 可临时唤出
+# ---------------------------------------------------------------------------
+$mainWindowJs = Join-Path $dest "resources\app\dist\main\window.js"
+if (Test-Path $mainWindowJs) {
+  $mw = Get-Content $mainWindowJs -Raw
+  if ($mw -notmatch "autoHideMenuBar") {
+    $anchor = "frame: process.platform !== 'darwin',"
+    $mw = $mw.Replace($anchor, $anchor + "`n        autoHideMenuBar: process.platform !== 'darwin',")
+    Set-Content $mainWindowJs $mw -Encoding UTF8 -NoNewline
+    Log "已隐藏原生菜单栏(autoHideMenuBar)"
+  }
+} else {
+  Warn "dist/main/window.js 缺失,跳过菜单栏隐藏"
 }
 
 # ---------------------------------------------------------------------------

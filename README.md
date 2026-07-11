@@ -99,7 +99,7 @@ pwsh scripts/repack.ps1
 3. 把 `app.asar` **解成 `app` 目录**(绕开 asar 索引限制),并合并 `unpacked`
 4. 用 Windows 预编译替换 `sharp` / `@parcel/watcher` / `better-sqlite3`
 5. 现场编译 `node-pty`(关闭 Spectre 缓解 + 打补丁),装入
-6. 注入运行时汉化脚本 `scripts/l10n/intent-zh.js`(词典式 DOM 翻译;上游无 i18n 框架,静态改字符串每版都会失配,运行时按"英文原文→中文"词典替换则与版本解耦——词典没覆盖的文案保持英文,不会破坏应用。补充翻译直接往该文件的 `DICT` 加词条)。同一脚本还注入一条 CSS 修正 Windows 下的窗口观感:上游按 macOS 无边框窗口设计,主内容卡片带外边距和圆角,在 Windows 原生窗框内会露出一圈底色黑边,注入的样式把卡片贴满窗口
+6. 注入运行时汉化脚本 `scripts/l10n/intent-zh.js`(词典式 DOM 翻译;上游无 i18n 框架,静态改字符串每版都会失配,运行时按"英文原文→中文"词典替换则与版本解耦——词典没覆盖的文案保持英文,不会破坏应用。补充翻译直接往该文件的 `DICT` 加词条)。同一脚本还注入几条 CSS 修正 Windows 下的窗口观感:上游按 macOS 无边框窗口设计,主内容卡片带外边距圆角、窗口底色近纯黑、顶栏带半透明黑遮罩,在 Windows 原生窗框内会露出一圈黑边,注入的样式把卡片贴满窗口并统一底色。另外给主进程窗口参数打 `autoHideMenuBar` 补丁隐藏原生菜单栏(按 Alt 可临时唤出)
 7. 从 dmg 的 `icon.icns` 提取应用图标,转成 `.ico` 后用 `rcedit` 写入 exe
 8. 组装成 `Intent-win` 并打包为 zip
 
