@@ -50,6 +50,48 @@
     "Just now": "刚刚",
     "Today": "今天",
     "Yesterday": "昨天",
+    "Note": "笔记",
+    "Browser": "浏览器",
+    "Search...": "搜索…",
+
+    // —— 智能体面板 / 专职智能体(名称与描述来自 resources/specialists/*.md 的 frontmatter) ——
+    "Agents working on your task in this space.": "在此空间中为你的任务工作的智能体。",
+    "No agents yet": "还没有智能体",
+    "Blank Agent": "空白智能体",
+    "Start fresh, no custom prompt": "从零开始，无自定义提示词",
+    "Specialists": "专职智能体",
+    "are pre-configured agent types.": "是预先配置好的智能体类型。",
+    "Customize specialists": "自定义专职智能体",
+    "Plans work, breaks down tasks, coordinates sub-agents": "规划工作、拆解任务、协调子智能体",
+    "Default for agent orchestration": "智能体编排的默认选项",
+    "Chief of Staff": "幕僚长",
+    "App-level assistant for workspaces, settings, specialists, and learning Intent":
+      "应用级助手：负责工作区、设置、专职智能体与 Intent 上手指导",
+    "Implementor": "实现者",
+    "Executes implementation tasks, writes code": "执行实现任务、编写代码",
+    "Developer": "开发者",
+    "Plans then implements by itself": "自主规划并实现",
+    "PR Reviewer": "PR 审查者",
+    "Reviews pull requests with high-confidence, actionable feedback":
+      "以高置信度、可执行的意见审查 Pull Request",
+    "PR Shepherd": "PR 护航者",
+    "Shepherds a PR to merge-ready state by coordinating fixes, CI, and reviews":
+      "协调修复、CI 与评审，把 PR 推进到可合并状态",
+    "Iterative work/test loop — plans with user, then autonomously works until tests pass":
+      "迭代式工作/测试循环——先与用户定计划，再自主工作直到测试通过",
+    "UI Designer": "UI 设计师",
+    "Creates elegant, accessible, production-ready user interfaces":
+      "创建优雅、无障碍、可用于生产的用户界面",
+    "Verifier": "验收者",
+    "Reviews work and verifies completeness": "审查工作成果并验证完整性",
+
+    // —— 快捷键提示(空面板占位) ——
+    "New Agent": "新建智能体",
+    "Command Palette": "命令面板",
+    "Reopen Closed Tab": "重新打开已关闭的标签页",
+    "Cycle through panels": "在面板间循环切换",
+    "Split Panel Horizontally": "水平拆分面板",
+    "Keyboard shortcuts": "键盘快捷键",
 
     // —— 通用按钮 / 操作 ——
     "Cancel": "取消",
@@ -215,7 +257,19 @@
     }
   }
 
+  // Windows 去黑边:应用按 macOS 无边框窗口设计,主内容卡片带外边距和圆角,
+  // 露出的窗口底色形成黑框。Windows 下已有原生窗框,把卡片贴满窗口即可。
+  // 选择器精确匹配主内容卡片的类组合(全库唯一),不影响弹窗等其他圆角元素。
+  function fixWindowChrome() {
+    const style = document.createElement("style");
+    style.textContent =
+      ".panel-layout-container .mr-1\\.5.mb-1\\.5.rounded-xl.bg-sidebar{" +
+      "margin-right:0!important;margin-bottom:0!important;border-radius:0!important;}";
+    document.head.appendChild(style);
+  }
+
   function start() {
+    fixWindowChrome();
     walk(document.body);
     new MutationObserver((muts) => {
       for (const m of muts) {
