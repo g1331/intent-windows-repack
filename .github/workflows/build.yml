@@ -112,12 +112,28 @@ jobs:
             ./scripts/repack.ps1 -Channel "${{ matrix.channel }}"
           }
 
+      # 用 Inno Setup 把 repack 产物编译成 Setup.exe(免管理员,装到用户目录,带卸载项)
+      - name: Build installer
+        if: steps.ver.outputs.skip != 'true'
+        shell: pwsh
+        run: |
+          choco install innosetup -y --no-progress
+          $v = "${{ steps.ver.outputs.version }}"
+          if ($v -eq "manual") {
+            # 手动 dmg 场景没解析版本号,从解包后的 package.json 里读
+            $v = (Get-Content .work/Intent-win/resources/app/package.json | ConvertFrom-Json).version
+          }
+          iscc /DAppVersion=$v /DSourceDir="$PWD\.work\Intent-win" scripts\installer.iss
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
       - name: Upload build artifact
         if: steps.ver.outputs.skip != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: intent-win32-x64-${{ matrix.channel }}
-          path: dist/*.zip
+          path: |
+            dist/*.zip
+            dist/*.exe
           if-no-files-found: error
 
       # 仅自动获取(已知版本号)时发布 Release;手动填 dmg_url 的场景只产 artifact。
@@ -128,5 +144,7 @@ jobs:
         with:
           tag_name: ${{ steps.ver.outputs.tag }}
           prerelease: ${{ matrix.channel == 'beta' }}
-          files: dist/*.zip
+          files: |
+            dist/*.zip
+            dist/*.exe
           generate_release_notes: true
