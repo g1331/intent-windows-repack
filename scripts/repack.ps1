@@ -342,7 +342,10 @@ $exeName = ($appName -replace "\.app$","") -replace " ",""
 Copy-Item (Join-Path $dest "electron.exe") (Join-Path $dest "$exeName.exe") -Force
 
 $stamp = (Get-Date -Format "yyyyMMdd")
-$zip = Join-Path $OutDir "Intent-win32-x64-electron$electronVersion-$stamp.zip"
+# 文件名带应用版本号,区分不同频道(stable/beta)的产物
+$appVer = Get-JsonValue (Join-Path $dest "resources\app\package.json") "version"
+$verSeg = if ($appVer) { "-$appVer" } else { "" }
+$zip = Join-Path $OutDir "Intent$verSeg-win32-x64-electron$electronVersion-$stamp.zip"
 if (Test-Path $zip) { Remove-Item $zip -Force }
 Log "打包成品: $zip"
 & $7z a -tzip $zip "$dest\*" -mx=5 | Out-Null

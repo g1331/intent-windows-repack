@@ -1,8 +1,10 @@
 name: Build Intent for Windows
 
 # 触发方式:
-#   1) schedule  — 每天检查更新源,发现未发布过的新版本就自动重打包并发布 Release。
-#   2) workflow_dispatch — 手动:可填 dmg_url 直接指定;留空则自动获取最新稳定版。
+#   1) schedule  — 每天检查更新源(stable + beta 两个频道),发现未发布过的新版本就自动重打包并发布 Release。
+#      stable 发正式 Release(tag v<版本>);beta 发 prerelease(tag v<版本>-beta)。
+#   2) workflow_dispatch — 手动:可填 dmg_url 直接指定(只跑 stable 一路,产 artifact 不发 Release);
+#      留空则和定时一样检查两个频道。
 #
 # 自动获取需要仓库 Secret `INTENT_UPDATE_BASE_URL`(Intent 更新源基址)。
 # 地址不写死在仓库里,避免公开第三方未文档化的下载端点。
@@ -29,6 +31,10 @@ permissions:
 jobs:
   build:
     runs-on: windows-2022
+    strategy:
+      fail-fast: false   # beta 一路失败不影响 stable
+      matrix:
+        channel: [stable, beta]
     env:
       INTENT_UPDATE_BASE_URL: ${{ secrets.INTENT_UPDATE_BASE_URL }}
     steps:
@@ -41,8 +47,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $dmgUrl = "${{ inputs.dmg_url }}"
+          $channel = "${{ matrix.channel }}"
+          $dmgUrl  = "${{ inputs.dmg_url }}"
           if ($dmgUrl) {
+            if ($channel -ne "stable") {
+              # 手动指定 dmg 与频道无关,只在 stable 一路跑,避免重复打包
+              Write-Host "手动指定 dmg_url,$channel 一路跳过"
+              "skip=true" >> $env:GITHUB_OUTPUT
+              exit 0
+            }
             # 手动指定 dmg:不解析版本,只产 artifact,不自动发 Release
             "version=manual" >> $env:GITHUB_OUTPUT
             "skip=false"     >> $env:GITHUB_OUTPUT
@@ -53,19 +66,23 @@ jobs:
             Write-Error "未配置 Secret INTENT_UPDATE_BASE_URL,无法自动获取。请在仓库 Settings → Secrets and variables → Actions 添加。"
             exit 1
           }
-          $feed = "$($env:INTENT_UPDATE_BASE_URL.TrimEnd('/'))/stable/latest-mac.yml"
+          $feed = "$($env:INTENT_UPDATE_BASE_URL.TrimEnd('/'))/$channel/latest-mac.yml"
           $yml  = [System.Text.Encoding]::UTF8.GetString((Invoke-WebRequest $feed -UseBasicParsing).Content)
           if ($yml -notmatch '(?m)^version:\s*(.+?)\s*$') { Write-Error "无法从清单解析版本号"; exit 1 }
           $v = $matches[1]
-          Write-Host "更新源最新稳定版: $v"
+          Write-Host "更新源最新 $channel 版: $v"
           "version=$v" >> $env:GITHUB_OUTPUT
+
+          # beta 打 -beta 后缀 tag,避免同版本号晋升 stable 后 tag 冲突
+          $tag = if ($channel -eq "beta") { "v$v-beta" } else { "v$v" }
+          "tag=$tag" >> $env:GITHUB_OUTPUT
 
           # 该版本是否已发布过 Release?(已发布且非强制 → 跳过)
           $force  = "${{ inputs.force }}" -eq "true"
-          gh release view "v$v" 2>$null 1>$null
+          gh release view "$tag" 2>$null 1>$null
           $exists = ($LASTEXITCODE -eq 0)   # release 不存在时 gh 返回非0,属预期
           if ($exists -and -not $force) {
-            Write-Host "v$v 已发布,跳过本次打包"
+            Write-Host "$tag 已发布,跳过本次打包"
             "skip=true" >> $env:GITHUB_OUTPUT
           } else {
             "skip=false" >> $env:GITHUB_OUTPUT
@@ -91,23 +108,25 @@ jobs:
           if ($dmgUrl) {
             ./scripts/repack.ps1 -DmgUrl "$dmgUrl"
           } else {
-            # 自动获取:repack.ps1 读取 env INTENT_UPDATE_BASE_URL 拉最新 stable dmg
-            ./scripts/repack.ps1
+            # 自动获取:repack.ps1 读取 env INTENT_UPDATE_BASE_URL 拉对应频道最新 dmg
+            ./scripts/repack.ps1 -Channel "${{ matrix.channel }}"
           }
 
       - name: Upload build artifact
         if: steps.ver.outputs.skip != 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: intent-win32-x64
+          name: intent-win32-x64-${{ matrix.channel }}
           path: dist/*.zip
           if-no-files-found: error
 
       # 仅自动获取(已知版本号)时发布 Release;手动填 dmg_url 的场景只产 artifact。
+      # beta 频道发 prerelease。
       - name: Publish to Release
         if: ${{ steps.ver.outputs.skip != 'true' && steps.ver.outputs.version != 'manual' }}
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.ver.outputs.version }}
+          tag_name: ${{ steps.ver.outputs.tag }}
+          prerelease: ${{ matrix.channel == 'beta' }}
           files: dist/*.zip
           generate_release_notes: true
