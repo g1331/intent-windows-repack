@@ -71,7 +71,7 @@ $env:INTENT_UPDATE_BASE_URL = "<Intent 更新源基址>"
 pwsh scripts/repack.ps1
 ```
 
-成品输出到 `dist\Intent-<应用版本>-win32-x64-*.zip`,解压即用(运行里面的 `Intent.exe`)。
+成品输出到 `dist\Intent-<应用版本>-win32-x64-*.zip`,解压即用(运行里面的 `IntentbyAugment.exe`)。
 
 > dmg 来源优先级:`-DmgPath` > `-DmgUrl` > 自动获取(从 `<UpdateBaseUrl>/<Channel>/latest-mac.yml` 解析最新版)。
 
