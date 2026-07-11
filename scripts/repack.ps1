@@ -310,6 +310,24 @@ if ($nptyVer) {
 } else { Warn "未发现 node-pty,跳过" }
 
 # ---------------------------------------------------------------------------
+# 5.5 注入运行时汉化(词典式 DOM 翻译,详见 scripts/l10n/intent-zh.js 头注释)
+# ---------------------------------------------------------------------------
+$l10nSrc  = Join-Path $PSScriptRoot "l10n\intent-zh.js"
+$renderer = Join-Path $dest "resources\app\dist\renderer"
+$indexHtml = Join-Path $renderer "index.html"
+if ((Test-Path $l10nSrc) -and (Test-Path $indexHtml)) {
+  Copy-Item $l10nSrc (Join-Path $renderer "intent-zh.js") -Force
+  $html = Get-Content $indexHtml -Raw
+  if ($html -notmatch "intent-zh\.js") {
+    $html = $html -replace "</head>", "<script defer src=`"./intent-zh.js`"></script></head>"
+    Set-Content $indexHtml $html -Encoding UTF8 -NoNewline
+  }
+  Log "已注入汉化脚本 intent-zh.js"
+} else {
+  Warn "汉化脚本或 renderer/index.html 缺失,跳过汉化注入"
+}
+
+# ---------------------------------------------------------------------------
 # 6. 删除原 app.asar / unpacked(改用 app 目录),打包成品
 # ---------------------------------------------------------------------------
 foreach ($p in @("app.asar","app.asar.unpacked")) {
