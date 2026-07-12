@@ -346,6 +346,60 @@ if (Test-Path $mainWindowJs) {
 }
 
 # ---------------------------------------------------------------------------
+# 5.7 修复 Agent 模型下拉框为空
+# ---------------------------------------------------------------------------
+# 新版 claude-agent-acp 把可选模型放进 session/new 结果的 configOptions(model
+# 类目的 select),而 Intent 旧解析器只认 models.availableModels,取不到模型,
+# 下拉框一直空/卡 Loading。这里让解析器在 availableModels 缺失时回退解析
+# configOptions,并放宽结果处理分支的判定条件。
+$ccIpc = Join-Path $dest "resources\app\dist\features\claude-code\main\claude-code.ipc.js"
+if (Test-Path $ccIpc) {
+  $ipc = Get-Content $ccIpc -Raw
+  if ($ipc -notmatch "parseModelsFromConfigOptions") {
+    # 1) parseModelsFromSessionUpdate 末尾加 configOptions 回退(原文件仅此一处 `    return models;`)
+    $fallback = @'
+    if (models.length === 0) {
+        return parseModelsFromConfigOptions(params?.configOptions);
+    }
+    return models;
+'@
+    $ipc = $ipc.Replace("    return models;`n", $fallback + "`n")
+    # 2) 在 parseModelsFromSessionUpdate 前插入 configOptions 解析辅助函数
+    $helper = @'
+function parseModelsFromConfigOptions(configOptions) {
+    if (!Array.isArray(configOptions))
+        return [];
+    const modelOpt = configOptions.find((o) => o?.category === 'model' || o?.id === 'model');
+    if (!modelOpt || !Array.isArray(modelOpt.options))
+        return [];
+    const models = [];
+    for (const m of modelOpt.options) {
+        const value = (m?.value || m?.modelId || m?.id || '').toString().trim();
+        if (!value)
+            continue;
+        const label = (m?.name || m?.displayName || m?.label || value).toString().trim();
+        const description = m?.description ? String(m.description) : undefined;
+        models.push({ value, label, description });
+    }
+    return models;
+}
+function parseModelsFromSessionUpdate(params) {
+'@
+    $ipc = $ipc.Replace('function parseModelsFromSessionUpdate(params) {', $helper)
+    # 3) 放宽 session/new 结果分支:configOptions 存在时也走解析(否则该分支永不触发)
+    $ipc = $ipc.Replace(
+      'if (msg?.result?.models?.availableModels) {',
+      'if (msg?.result?.models?.availableModels || msg?.result?.configOptions) {')
+    Set-Content $ccIpc $ipc -Encoding UTF8 -NoNewline
+    Log "已修复 Agent 模型解析(configOptions 回退)"
+  } else {
+    Log "claude-code.ipc.js 已含 configOptions 解析,跳过"
+  }
+} else {
+  Warn "dist/.../claude-code.ipc.js 缺失,跳过模型解析修复"
+}
+
+# ---------------------------------------------------------------------------
 # 6. 删除原 app.asar / unpacked(改用 app 目录),打包成品
 # ---------------------------------------------------------------------------
 foreach ($p in @("app.asar","app.asar.unpacked")) {
