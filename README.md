@@ -94,24 +94,41 @@ pwsh scripts/repack.ps1
 
 `scripts/repack.ps1` 全程从 dmg 动态探测版本,不写死任何版本号:
 
+**底座替换(1–5):把 macOS 运行时换成 Windows**
+
 1. 解开 dmg,提取 `app.asar` / `app.asar.unpacked`,读出 Electron 版本与原生模块 ABI
 2. 下载对应版本的 Windows 版 Electron 运行时
-3. 把 `app.asar` **解成 `app` 目录**(绕开 asar 索引限制),并合并 `unpacked`
+3. 把 `app.asar` **解成 `app` 目录**(绕开 asar 索引限制),并合并 `unpacked` —— *[为何解成目录](#note-asar)*
 4. 用 Windows 预编译替换 `sharp` / `@parcel/watcher` / `better-sqlite3`
 5. 现场编译 `node-pty`(关闭 Spectre 缓解 + 打补丁),装入
-6. 注入运行时汉化脚本 `scripts/l10n/intent-zh.js`(词典式 DOM 翻译;上游无 i18n 框架,静态改字符串每版都会失配,运行时按"英文原文→中文"词典替换则与版本解耦——词典没覆盖的文案保持英文,不会破坏应用。补充翻译直接往该文件的 `DICT` 加词条)。同一脚本还注入几条 CSS 修正 Windows 下的窗口观感:上游按 macOS 无边框窗口设计,主内容卡片带外边距圆角、窗口底色近纯黑、顶栏带半透明黑遮罩,在 Windows 原生窗框内会露出一圈黑边,注入的样式把卡片贴满窗口并统一底色。另外给主进程窗口参数打 `autoHideMenuBar` 补丁隐藏原生菜单栏(按 Alt 可临时唤出)
-7. 修复 Agent 模型下拉框:补丁 `dist/.../claude-code.ipc.js` 的模型解析(见下)
-8. 从 dmg 的 `icon.icns` 提取应用图标,转成 `.ico` 后用 `rcedit` 写入 exe
+
+**Windows 适配(6–7):汉化、观感与已知问题修复**
+
+6. 注入汉化脚本 + 修正 Windows 下的窗口观感 —— *[做了哪些定制](#note-l10n)*
+7. 修复 Agent 模型下拉框为空 —— *[修的是什么](#note-model)*
+
+**成品封装(8–9):图标与打包**
+
+8. 从 dmg 的 `icon.icns` 提取应用图标,转成 `.ico` 后用 `rcedit` 写入 exe —— *[图标怎么来的](#note-icon)*
 9. 组装成 `Intent-win` 并打包为 zip
 
+<a id="note-asar"></a>
+> **为什么第 3 步要把 asar 解成目录?**
+> `app.asar` 是带索引的归档文件。往 `app.asar.unpacked` 里新增文件(比如 Windows 版原生模块)是无效的——因为 asar 的索引里没有这个新条目,`require` 解析时根本找不到它。最干净的解法是把整个 `app.asar` 解成普通的 `app` 目录、删掉原 asar,这样 Electron 直接按目录加载,新增/替换文件就都能被认到。
+
+<a id="note-l10n"></a>
+> **第 6 步做了哪些定制?** 三处,全在 `scripts/l10n/intent-zh.js` 一个脚本里注入:
+> - **汉化** —— 词典式 DOM 翻译。上游无 i18n 框架,静态改字符串每版都会失配;运行时按“英文原文→中文”词典替换则与版本解耦——词典没覆盖的文案保持英文,不会破坏应用。补充翻译直接往该文件的 `DICT` 加词条。
+> - **窗口观感** —— 上游按 macOS 无边框窗口设计,主内容卡片带外边距圆角、窗口底色近纯黑、顶栏带半透明黑遮罩,套进 Windows 原生窗框会露出一圈黑边;注入的 CSS 把卡片贴满窗口并统一底色。
+> - **菜单栏** —— 给主进程窗口参数打 `autoHideMenuBar` 补丁,隐藏原生菜单栏(按 Alt 可临时唤出)。
+
+<a id="note-model"></a>
 > **第 7 步在修什么?**
 > Intent 的 Agent(Claude Code provider)通过 `claude-agent-acp` 适配器列出可选模型。新版适配器把模型放进 `session/new` 结果的 `configOptions`(model 类目的 select),而 Intent 内置的解析器只认旧格式 `models.availableModels`,于是取不到模型、下拉框一直空或卡在 Loading。补丁让解析器在旧字段缺失时回退解析 `configOptions`,并放宽结果处理分支的判定,兼容新旧两种格式。
 >
 > 另需**全局安装适配器**才能真正列出模型:`npm i -g @agentclientprotocol/claude-agent-acp`。否则 Intent 回退到 `npx -y @agentclientprotocol/claude-agent-acp`,冷启动超过取模型的 12 秒超时,同样列不出。适配器只是启动本机 `claude` CLI(需先 `npm i -g @anthropic-ai/claude-code`),不改变鉴权路径。
 
-> **为什么第 3 步要把 asar 解成目录?**
-> `app.asar` 是带索引的归档文件。往 `app.asar.unpacked` 里新增文件(比如 Windows 版原生模块)是无效的——因为 asar 的索引里没有这个新条目,`require` 解析时根本找不到它。最干净的解法是把整个 `app.asar` 解成普通的 `app` 目录、删掉原 asar,这样 Electron 直接按目录加载,新增/替换文件就都能被认到。
-
+<a id="note-icon"></a>
 > **第 8 步的图标怎么来的?**
 > dmg 里的 `Contents/Resources/icon.icns` 是 macOS 图标格式,Windows 不认。`scripts/icns2ico.js` 直接在 `.icns` 字节流里扫描内嵌的 PNG(现代 icns 内部就是多张不同分辨率的 PNG),取最大的一张,用 `png2icons` 生成多尺寸 `.ico`,再用 `rcedit` 写进 exe 的资源段。注意顺序:先给 `electron.exe` 写图标,再复制成应用名 exe,让副本天然继承图标。这两个依赖(`png2icons` / `rcedit`)脚本会自动 `npm install` / 下载,CI 的 windows runner 上同样适用。
 
