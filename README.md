@@ -30,11 +30,9 @@
 
 ## 🖼️ 界面预览
 
-<!-- 截一张干净的实机图放到 docs/preview.png，然后取消下面这行注释即可显示：
 <div align="center"><img src="docs/preview.png" width="820" alt="汉化后的 Intent 运行在 Windows 上"></div>
--->
 
-> 汉化后的 Intent 跑在 Windows 上的实机截图 —— *占位中，欢迎 PR 一张*。
+<div align="center"><sub>汉化后的 Intent 跑在 Windows 上 —— 工作区就绪页</sub></div>
 
 ---
 
